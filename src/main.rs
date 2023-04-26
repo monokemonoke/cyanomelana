@@ -1,11 +1,9 @@
 use std::{
-    borrow::Borrow,
-    error::Error,
     fs::{self, File},
-    io::{BufReader, Read, Seek, SeekFrom},
+    io::{BufReader, Error, Read, Seek, SeekFrom},
 };
 
-fn read_previous_line<R>(reader: &mut BufReader<R>) -> Result<String, std::io::Error>
+fn read_previous_line<R>(reader: &mut BufReader<R>) -> Result<String, Error>
 where
     R: Read + Seek,
 {
@@ -25,7 +23,7 @@ where
     Ok(line.trim_end().to_owned())
 }
 
-fn check_eof<R: Read + Seek>(reader: &mut BufReader<R>) -> Result<(), Box<dyn Error>> {
+fn check_eof<R: Read + Seek>(reader: &mut BufReader<R>) -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let line = match read_previous_line(reader) {
             Err(e) => return Err(e.into()),
