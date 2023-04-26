@@ -14,7 +14,9 @@ where
         reader.read(&mut buf).unwrap();
         let c = match String::from_utf8(buf.to_vec()) {
             Err(_) => {
-                reader.seek(SeekFrom::Current(-2)).unwrap();
+                if let Err(e) = reader.seek(SeekFrom::Current(-2)) {
+                    return Err(e.into());
+                }
                 return Ok(line);
             }
             Ok(c) => c,
@@ -22,14 +24,32 @@ where
 
         match c.as_str() {
             "\n" => {
-                reader.seek(SeekFrom::Current(-2)).unwrap();
+                if let Err(e) = reader.seek(SeekFrom::Current(-2)) {
+                    return Err(e.into());
+                }
                 return Ok(line);
             }
             _ => (),
         }
         line = format!("{}{}", c, line);
-        reader.seek(SeekFrom::Current(-2)).unwrap();
+        if let Err(e) = reader.seek(SeekFrom::Current(-2)) {
+            return Err(e.into());
+        }
     }
+}
+
+fn check_eof<R: Read + Seek>(reader: &mut BufReader<R>) -> Result<(), Box<dyn Error>> {
+    loop {
+        let line = match read_previous_line(reader) {
+            Err(e) => return Err(e),
+            Ok(line) => line,
+        };
+        if line.starts_with("%%EOF") {
+            break;
+        };
+    }
+
+    Ok(())
 }
 
 fn read_pdf(name: &String) {
@@ -37,11 +57,11 @@ fn read_pdf(name: &String) {
 
     let mut reader = BufReader::new(file);
     reader.seek(SeekFrom::End(-2)).unwrap();
-
-    for _ in 0..2 {
-        let line = read_previous_line(&mut reader).unwrap();
-        dbg!(line);
+    if let Err(_) = check_eof(&mut reader) {
+        dbg!("failed to check eof skipped...");
+        return;
     }
+    dbg!(read_previous_line(&mut reader).unwrap());
 }
 
 fn main() {
