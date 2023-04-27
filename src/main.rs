@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File},
-    io::{BufRead, BufReader, Seek, SeekFrom},
+    io::{BufReader, Seek, SeekFrom},
 };
 
 mod parser;
@@ -18,31 +18,11 @@ fn read_pdf(name: &String) {
     let xref_byte: u64 = xref_byte.parse().unwrap();
 
     reader.seek(SeekFrom::Start(xref_byte)).unwrap();
-    let mut buf = String::new();
-
-    reader.read_line(&mut buf).unwrap();
-    if !buf.starts_with("xref") {
-        return;
-    }
-    buf.clear();
-    reader.read_line(&mut buf).unwrap();
-    let num_of_objects_str = buf.split(' ').last().unwrap().trim_end();
-    let num_of_objects: u64 = num_of_objects_str.parse().unwrap();
-    println!("{}", num_of_objects);
-    let mut xref_table: Vec<parser::XrefRecord> = Vec::new();
-    for _ in 0..num_of_objects {
-        let mut buf = String::new();
-        reader.read_line(&mut buf).unwrap();
-        let parts: Vec<&str> = buf.split_whitespace().collect();
-        assert_eq!(parts.len(), 3);
-
-        xref_table.push(parser::XrefRecord::new(
-            parts[0].parse().unwrap(),
-            parts[1].parse().unwrap(),
-            parser::ObjType::new(parts[2]).unwrap(),
-        ))
-    }
-    dbg!(xref_table);
+    let table = match parser::parse_xref_table(&mut reader) {
+        Err(()) => return,
+        Ok(t) => t,
+    };
+    dbg!(table);
 }
 
 fn main() {
