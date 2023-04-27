@@ -1,84 +1,20 @@
 use std::{
     fs::{self, File},
-    io::{BufRead, BufReader, Error, ErrorKind, Read, Seek, SeekFrom},
+    io::{BufRead, BufReader, Seek, SeekFrom},
 };
 
-fn read_previous_line<R>(reader: &mut BufReader<R>) -> Result<String, Error>
-where
-    R: Read + Seek,
-{
-    let mut line = String::new();
-    loop {
-        let mut buf = [0; 1];
-        reader.read(&mut buf)?;
-        let c = &String::from_utf8_lossy(&buf);
-
-        if c == "\n" {
-            break;
-        }
-        line.insert_str(0, c);
-        reader.seek(SeekFrom::Current(-2))?;
-    }
-    reader.seek(SeekFrom::Current(-2))?;
-    Ok(line.trim_end().to_owned())
-}
-
-fn check_eof_with_limit<R: Read + Seek>(
-    reader: &mut BufReader<R>,
-    limit: usize,
-) -> Result<(), Error> {
-    for _ in 0..limit {
-        let line = read_previous_line(reader)?;
-        if line.starts_with("%%EOF") {
-            return Ok(());
-        }
-    }
-    return Err(Error::new(ErrorKind::NotFound, "hoge"));
-}
-
-#[derive(Debug)]
-enum ObjType {
-    F,
-    N,
-}
-
-impl ObjType {
-    fn new(str: &str) -> Result<Self, ()> {
-        match str {
-            "f" => Ok(Self::F),
-            "n" => Ok(Self::N),
-            _ => Err(()),
-        }
-    }
-}
-
-#[derive(Debug)]
-struct XrefRecord {
-    _byte: u64,
-    _generation: u64,
-    _obj_type: ObjType,
-}
-
-impl XrefRecord {
-    fn new(byte: u64, generation: u64, obj_type: ObjType) -> Self {
-        XrefRecord {
-            _byte: byte,
-            _generation: generation,
-            _obj_type: obj_type,
-        }
-    }
-}
+mod parser;
 
 fn read_pdf(name: &String) {
     let file = File::open(name).unwrap();
 
     let mut reader = BufReader::new(file);
     reader.seek(SeekFrom::End(-2)).unwrap();
-    if let Err(_) = check_eof_with_limit(&mut reader, 16) {
+    if let Err(_) = parser::check_eof_with_limit(&mut reader, 16) {
         return;
     }
 
-    let xref_byte = read_previous_line(&mut reader).unwrap();
+    let xref_byte = parser::read_previous_line(&mut reader).unwrap();
     let xref_byte: u64 = xref_byte.parse().unwrap();
 
     reader.seek(SeekFrom::Start(xref_byte)).unwrap();
@@ -93,17 +29,17 @@ fn read_pdf(name: &String) {
     let num_of_objects_str = buf.split(' ').last().unwrap().trim_end();
     let num_of_objects: u64 = num_of_objects_str.parse().unwrap();
     println!("{}", num_of_objects);
-    let mut xref_table: Vec<XrefRecord> = Vec::new();
+    let mut xref_table: Vec<parser::XrefRecord> = Vec::new();
     for _ in 0..num_of_objects {
         let mut buf = String::new();
         reader.read_line(&mut buf).unwrap();
         let parts: Vec<&str> = buf.split_whitespace().collect();
         assert_eq!(parts.len(), 3);
 
-        xref_table.push(XrefRecord::new(
+        xref_table.push(parser::XrefRecord::new(
             parts[0].parse().unwrap(),
             parts[1].parse().unwrap(),
-            ObjType::new(parts[2]).unwrap(),
+            parser::ObjType::new(parts[2]).unwrap(),
         ))
     }
     dbg!(xref_table);
