@@ -36,6 +36,39 @@ fn check_eof_with_limit<R: Read + Seek>(
     return Err(Error::new(ErrorKind::NotFound, "hoge"));
 }
 
+#[derive(Debug)]
+enum ObjType {
+    F,
+    N,
+}
+
+impl ObjType {
+    fn new(str: &str) -> Result<Self, ()> {
+        match str {
+            "f" => Ok(Self::F),
+            "n" => Ok(Self::N),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct XrefRecord {
+    _byte: u64,
+    _generation: u64,
+    _obj_type: ObjType,
+}
+
+impl XrefRecord {
+    fn new(byte: u64, generation: u64, obj_type: ObjType) -> Self {
+        XrefRecord {
+            _byte: byte,
+            _generation: generation,
+            _obj_type: obj_type,
+        }
+    }
+}
+
 fn read_pdf(name: &String) {
     let file = File::open(name).unwrap();
 
@@ -60,16 +93,20 @@ fn read_pdf(name: &String) {
     let num_of_objects_str = buf.split(' ').last().unwrap().trim_end();
     let num_of_objects: u64 = num_of_objects_str.parse().unwrap();
     println!("{}", num_of_objects);
+    let mut xref_table: Vec<XrefRecord> = Vec::new();
     for _ in 0..num_of_objects {
         let mut buf = String::new();
         reader.read_line(&mut buf).unwrap();
         let parts: Vec<&str> = buf.split_whitespace().collect();
-        let object_id = parts[0];
-        let generation = parts[1];
-        let byte = parts[2];
+        assert_eq!(parts.len(), 3);
 
-        println!("{} {} {}", object_id, generation, byte);
+        xref_table.push(XrefRecord::new(
+            parts[0].parse().unwrap(),
+            parts[1].parse().unwrap(),
+            ObjType::new(parts[2]).unwrap(),
+        ))
     }
+    dbg!(xref_table);
 }
 
 fn main() {
