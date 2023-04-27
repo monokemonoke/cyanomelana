@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File},
-    io::{BufReader, Error, Read, Seek, SeekFrom},
+    io::{BufReader, Error, ErrorKind, Read, Seek, SeekFrom},
 };
 
 fn read_previous_line<R>(reader: &mut BufReader<R>) -> Result<String, Error>
@@ -23,18 +23,17 @@ where
     Ok(line.trim_end().to_owned())
 }
 
-fn check_eof<R: Read + Seek>(reader: &mut BufReader<R>) -> Result<(), Box<dyn std::error::Error>> {
-    loop {
-        let line = match read_previous_line(reader) {
-            Err(e) => return Err(e.into()),
-            Ok(line) => line,
-        };
+fn check_eof_with_limit<R: Read + Seek>(
+    reader: &mut BufReader<R>,
+    limit: usize,
+) -> Result<(), Error> {
+    for _ in 0..limit {
+        let line = read_previous_line(reader)?;
         if line.starts_with("%%EOF") {
-            break;
-        };
+            return Ok(());
+        }
     }
-
-    Ok(())
+    return Err(Error::new(ErrorKind::NotFound, "hoge"));
 }
 
 fn read_pdf(name: &String) {
@@ -42,11 +41,11 @@ fn read_pdf(name: &String) {
 
     let mut reader = BufReader::new(file);
     reader.seek(SeekFrom::End(-2)).unwrap();
-    if let Err(_) = check_eof(&mut reader) {
-        dbg!("failed to check eof skipped...");
+    if let Err(_) = check_eof_with_limit(&mut reader, 16) {
+        println!("failed to check eof skipped...");
         return;
     }
-    dbg!(read_previous_line(&mut reader).unwrap());
+    println!("{}", read_previous_line(&mut reader).unwrap());
 }
 
 fn main() {
@@ -56,7 +55,7 @@ fn main() {
         .into_iter()
         .map(|v| v.unwrap().file_name().to_str().unwrap().to_string())
         .map(|v| {
-            dbg!(&v);
+            println!("{}", &v);
             v
         })
         .filter(|v| v.contains(".pdf"))
