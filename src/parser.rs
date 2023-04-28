@@ -111,3 +111,42 @@ pub fn parse_xref_table(reader: &mut BufReader<std::fs::File>) -> Result<Vec<Xre
 
     Ok(xref_table)
 }
+
+#[cfg(test)]
+mod test {
+    use std::io::Cursor;
+
+    use super::*;
+
+    #[test]
+    fn test_read_previous_line() {
+        struct TestCase<'a> {
+            src: &'a [u8],
+            want: &'a str,
+            pos: i64,
+        }
+        let tests = [
+            // TestCase {
+            //     src: b"hoge",
+            //     want: "hoge",
+            //     pos: -1,
+            // },
+            TestCase {
+                src: b"hoge\n",
+                want: "",
+                pos: -1,
+            },
+        ];
+
+        for t in tests {
+            let cursor = Cursor::new(t.src);
+            let mut reader = BufReader::new(cursor);
+            let result = reader.seek(SeekFrom::End(t.pos));
+            assert!(result.is_ok(), "Error {:?}", result);
+
+            let got = read_previous_line(&mut reader);
+            assert!(got.is_ok(), "Error {:?}", got);
+            assert_eq!(t.want, got.unwrap());
+        }
+    }
+}
