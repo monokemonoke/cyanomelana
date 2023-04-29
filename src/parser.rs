@@ -37,7 +37,10 @@ pub fn check_eof_with_limit<R: Read + Seek>(
             return Ok(());
         }
     }
-    return Err(Error::new(ErrorKind::NotFound, "cannot find EOF comment in PDF"));
+    return Err(Error::new(
+        ErrorKind::NotFound,
+        "cannot find EOF comment in PDF",
+    ));
 }
 
 pub fn parse_xref_table(reader: &mut BufReader<std::fs::File>) -> Result<Vec<XrefRecord>, ()> {
@@ -93,4 +96,20 @@ pub fn parse_xref_table(reader: &mut BufReader<std::fs::File>) -> Result<Vec<Xre
     }
 
     Ok(xref_table)
+}
+
+#[cfg(test)]
+mod test {
+    use std::io::Cursor;
+
+    use super::*;
+
+    #[test]
+    fn test_check_eof_with_limit() {
+        let cursor = Cursor::new(b"");
+        let mut reader = BufReader::new(cursor);
+
+        let res = check_eof_with_limit(&mut reader, 1);
+        assert!(res.is_ok(), "want Ok but got Err({:?})", res.err());
+    }
 }
