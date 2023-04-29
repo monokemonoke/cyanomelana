@@ -10,12 +10,10 @@ fn read_pdf(name: &String) {
     let file = File::open(name).unwrap();
 
     let mut reader = BufReader::new(file);
-    if let Err(_) = parser::check_eof_with_limit(&mut reader, 16) {
-        return;
-    }
 
-    let xref_byte = utils::read_previous_line(&mut reader).unwrap();
-    let xref_byte: u64 = xref_byte.parse().unwrap();
+    parser::check_eof_with_limit(&mut reader, 16).unwrap();
+
+    let xref_byte = parser::parse_xref_table_pos(&mut reader).unwrap();
 
     reader.seek(SeekFrom::Start(xref_byte)).unwrap();
     let _table = match parser::parse_xref_table(&mut reader) {

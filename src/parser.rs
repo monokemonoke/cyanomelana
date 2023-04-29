@@ -48,6 +48,18 @@ pub fn check_eof_with_limit<R: Read + Seek>(
     ));
 }
 
+/// parse xref table position after find `%%EOF` comment
+pub fn parse_xref_table_pos<R: Read + Seek>(reader: &mut BufReader<R>) -> Result<u64, Error> {
+    let xref_byte = utils::read_previous_line(reader)?;
+    match xref_byte.parse::<u64>() {
+        Err(_) => Err(Error::new(
+            ErrorKind::InvalidData,
+            "cannot parse xref table position",
+        )),
+        Ok(n) => Ok(n),
+    }
+}
+
 pub fn parse_xref_table(reader: &mut BufReader<std::fs::File>) -> Result<Vec<XrefRecord>, ()> {
     let mut buf = String::new();
     if let Err(_) = reader.read_line(&mut buf) {
@@ -134,5 +146,17 @@ mod test {
 
         let res = check_eof_with_limit(&mut reader, 1);
         assert!(res.is_err(), "want Err but got {:?}", res);
+    }
+
+    #[test]
+    fn test_parse_xref_table_pos() {
+        let cursor = Cursor::new(b"1234");
+        let mut reader = BufReader::new(cursor);
+        reader.seek(SeekFrom::End(-1)).unwrap();
+
+        let res = parse_xref_table_pos(&mut reader);
+        assert!(res.is_ok(), "want Ok but got Err({:?})", res.err());
+        let got = res.unwrap();
+        assert_eq!(got, 1234, "want 1234 but got {}", got);
     }
 }
