@@ -4,6 +4,7 @@ use std::{
 };
 
 mod parser;
+mod utils;
 
 fn read_pdf(name: &String) {
     let file = File::open(name).unwrap();
@@ -14,7 +15,7 @@ fn read_pdf(name: &String) {
         return;
     }
 
-    let xref_byte = parser::read_previous_line(&mut reader).unwrap();
+    let xref_byte = utils::read_previous_line(&mut reader).unwrap();
     let xref_byte: u64 = xref_byte.parse().unwrap();
 
     reader.seek(SeekFrom::Start(xref_byte)).unwrap();
