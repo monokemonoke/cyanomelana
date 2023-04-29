@@ -30,7 +30,12 @@ pub fn check_eof_with_limit<R: Read + Seek>(
     reader: &mut BufReader<R>,
     limit: usize,
 ) -> Result<(), Error> {
-    reader.seek(SeekFrom::End(-1)).unwrap();
+    if reader.seek(SeekFrom::End(-1)).is_err() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "cannot seek to the last of the file",
+        ));
+    }
     for _ in 0..limit {
         let line = utils::read_previous_line(reader)?;
         if line.starts_with("%%EOF") {
