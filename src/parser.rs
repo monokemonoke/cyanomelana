@@ -110,6 +110,24 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_check_eof_with_limit() {
+        let cursor = Cursor::new(b"%%EOF");
+        let mut reader = BufReader::new(cursor);
+        let res = check_eof_with_limit(&mut reader, 1);
+        assert!(res.is_ok(), "want ok but got Err({:?})", res.err());
+
+        let cursor = Cursor::new(b"%%EOF\r\n");
+        let mut reader = BufReader::new(cursor);
+        let res = check_eof_with_limit(&mut reader, 4);
+        assert!(res.is_ok(), "want ok but got Err({:?})", res.err());
+
+        let cursor = Cursor::new(b"%%EOFother messy strings");
+        let mut reader = BufReader::new(cursor);
+        let res = check_eof_with_limit(&mut reader, 4);
+        assert!(res.is_ok(), "want ok but got Err({:?})", res.err());
+    }
+
+    #[test]
     fn test_check_eof_with_limit_for_empty_file() {
         let cursor = Cursor::new(b"");
         let mut reader = BufReader::new(cursor);
