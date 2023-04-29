@@ -1,5 +1,6 @@
 use std::io::{BufReader, Error, Read, Seek, SeekFrom};
 
+/// read line backwards
 pub fn read_previous_line<R>(reader: &mut BufReader<R>) -> Result<String, Error>
 where
     R: Read + Seek,
@@ -10,6 +11,7 @@ where
         reader.read(&mut buf)?;
 
         match &buf {
+            b"\0" => break,
             b"\n" | b"\r" => {
                 if reader.stream_position()? >= 2 {
                     reader.seek(SeekFrom::Current(-2))?;
@@ -25,7 +27,6 @@ where
                 break;
             }
             _ => {
-                println!("{}", String::from_utf8_lossy(&buf));
                 bytes.push(buf[0]);
                 if reader.stream_position()? < 2 {
                     break;
@@ -36,10 +37,7 @@ where
     }
 
     bytes.reverse();
-    let str = String::from_utf8_lossy(&bytes)
-        .to_string()
-        .trim_end()
-        .to_owned();
+    let str = String::from_utf8_lossy(&bytes).trim_end().to_owned();
 
     Ok(str)
 }
@@ -67,5 +65,15 @@ mod test {
         let res = read_previous_line(&mut reader);
         assert!(res.is_ok(), "want Ok but got Err({:?})", res.err());
         assert_eq!(res.unwrap(), "fuga".to_string());
+    }
+
+    #[test]
+    fn test_read_previous_line_with_empty() {
+        let cursor = Cursor::new(b"");
+        let mut reader = BufReader::new(cursor);
+
+        let res = read_previous_line(&mut reader);
+        assert!(res.is_ok(), "want Ok but got Err({:?})", res.err());
+        assert_eq!(res.unwrap(), "".to_string());
     }
 }
