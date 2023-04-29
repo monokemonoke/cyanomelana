@@ -60,59 +60,85 @@ pub fn parse_xref_table_pos<R: Read + Seek>(reader: &mut BufReader<R>) -> Result
     }
 }
 
-pub fn parse_xref_table(reader: &mut BufReader<std::fs::File>) -> Result<Vec<XrefRecord>, ()> {
-    let mut buf = String::new();
-    if let Err(_) = reader.read_line(&mut buf) {
-        return Err(());
-    }
-    if !buf.trim().starts_with("xref") {
-        return Err(());
+/// parse xref table content as a `Vec<XrefRecord>`
+pub fn parse_xref_table(reader: &mut BufReader<std::fs::File>) -> Result<Vec<XrefRecord>, Error> {
+    let mut buf = [0; 4];
+
+    // parse `xref` token
+    reader.read(&mut buf)?;
+    if !buf.starts_with(b"xref") {
+        reader.seek(SeekFrom::Current(-4))?;
     }
 
-    buf.clear();
-    if let Err(_) = reader.read_line(&mut buf) {
-        return Err(());
+    // skip CRLF tokens
+    let mut buf = [0; 1];
+    loop {
+        reader.read(&mut buf)?;
+        if &buf != b"\n" && &buf != b"\r" {
+            reader.seek(SeekFrom::Current(-1))?;
+            break;
+        }
     }
-    let len_objects: u64 = match buf.trim_end().split(' ').last() {
-        None => return Err(()),
-        Some(n) => match n.parse() {
-            Err(_) => return Err(()),
+
+    // parse number of objects
+    let mut buf = String::new();
+    reader.read_line(&mut buf)?;
+    let num_of_objects: u64 = match buf.trim().split(' ').nth(1) {
+        None => {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                "cannot find the number of objects",
+            ))
+        }
+        Some(str) => match str.parse() {
+            Err(_) => {
+                return Err(Error::new(
+                    ErrorKind::NotFound,
+                    "cannot find the number of objects",
+                ))
+            }
             Ok(n) => n,
         },
     };
 
-    let mut xref_table: Vec<XrefRecord> = Vec::new();
-    for _ in 0..len_objects {
+    // parse table contents
+    let mut table: Vec<XrefRecord> = Vec::new();
+    for _ in 0..num_of_objects {
         let mut buf = String::new();
-        if let Err(_) = reader.read_line(&mut buf) {
-            return Err(());
-        }
+        reader.read_line(&mut buf)?;
 
-        let parts: Vec<&str> = buf.split_whitespace().collect();
-        if parts.len() != 3 {
-            return Err(());
-        }
+        let err_failed_to_parse: Error =
+            Error::new(ErrorKind::NotFound, "cannot find the number of objects");
 
-        let byte: u64 = match parts[0].parse() {
-            Err(_) => return Err(()),
-            Ok(n) => n,
+        let byte: u64 = match buf.split(' ').nth(0) {
+            None => return Err(err_failed_to_parse),
+            Some(s) => match s.parse() {
+                Err(_) => return Err(err_failed_to_parse),
+                Ok(b) => b,
+            },
         };
-        let gen: u64 = match parts[1].parse() {
-            Err(_) => return Err(()),
-            Ok(n) => n,
+        let gen: u64 = match buf.split(' ').nth(1) {
+            None => return Err(err_failed_to_parse),
+            Some(s) => match s.parse() {
+                Err(_) => return Err(err_failed_to_parse),
+                Ok(b) => b,
+            },
         };
-        let obj_type = match ObjType::new(parts[2]) {
-            Err(_) => return Err(()),
-            Ok(t) => t,
+        let obj_type = match buf.split(' ').nth(2) {
+            None => return Err(err_failed_to_parse),
+            Some(s) => match ObjType::new(s) {
+                Err(_) => return Err(err_failed_to_parse),
+                Ok(t) => t,
+            },
         };
-        xref_table.push(XrefRecord {
+
+        table.push(XrefRecord {
             byte: byte,
             generation: gen,
             obj_type: obj_type,
         })
     }
-
-    Ok(xref_table)
+    Ok(table)
 }
 
 #[cfg(test)]

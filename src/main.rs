@@ -16,11 +16,14 @@ fn read_pdf(name: &String) {
     let xref_byte = parser::parse_xref_table_pos(&mut reader).unwrap();
 
     reader.seek(SeekFrom::Start(xref_byte)).unwrap();
-    let _table = match parser::parse_xref_table(&mut reader) {
-        Err(()) => return,
+    let table = match parser::parse_xref_table(&mut reader) {
+        Err(e) => {
+            eprintln!("{:?}", e);
+            return;
+        }
         Ok(t) => t,
     };
-    // dbg!(table);
+    dbg!(table);
 }
 
 fn main() {
