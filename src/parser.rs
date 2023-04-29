@@ -110,11 +110,11 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_check_eof_with_limit() {
+    fn test_check_eof_with_limit_for_empty_file() {
         let cursor = Cursor::new(b"");
         let mut reader = BufReader::new(cursor);
 
         let res = check_eof_with_limit(&mut reader, 1);
-        assert!(res.is_ok(), "want Ok but got Err({:?})", res.err());
+        assert!(res.is_err(), "want Err but got {:?}", res);
     }
 }
