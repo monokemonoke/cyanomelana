@@ -1,5 +1,5 @@
 use crate::utils;
-use std::io::{BufRead, BufReader, Error, ErrorKind, Read, Seek};
+use std::io::{BufRead, BufReader, Error, ErrorKind, Read, Seek, SeekFrom};
 
 #[derive(Debug)]
 pub enum ObjType {
@@ -25,17 +25,19 @@ pub struct XrefRecord {
     obj_type: ObjType,
 }
 
+/// check `%%EOF` comment in PDF file
 pub fn check_eof_with_limit<R: Read + Seek>(
     reader: &mut BufReader<R>,
     limit: usize,
 ) -> Result<(), Error> {
+    reader.seek(SeekFrom::End(-1)).unwrap();
     for _ in 0..limit {
         let line = utils::read_previous_line(reader)?;
         if line.starts_with("%%EOF") {
             return Ok(());
         }
     }
-    return Err(Error::new(ErrorKind::NotFound, "hoge"));
+    return Err(Error::new(ErrorKind::NotFound, "cannot find EOF comment in PDF"));
 }
 
 pub fn parse_xref_table(reader: &mut BufReader<std::fs::File>) -> Result<Vec<XrefRecord>, ()> {

@@ -10,7 +10,6 @@ fn read_pdf(name: &String) {
     let file = File::open(name).unwrap();
 
     let mut reader = BufReader::new(file);
-    reader.seek(SeekFrom::End(-2)).unwrap();
     if let Err(_) = parser::check_eof_with_limit(&mut reader, 16) {
         return;
     }
@@ -19,11 +18,11 @@ fn read_pdf(name: &String) {
     let xref_byte: u64 = xref_byte.parse().unwrap();
 
     reader.seek(SeekFrom::Start(xref_byte)).unwrap();
-    let table = match parser::parse_xref_table(&mut reader) {
+    let _table = match parser::parse_xref_table(&mut reader) {
         Err(()) => return,
         Ok(t) => t,
     };
-    dbg!(table);
+    // dbg!(table);
 }
 
 fn main() {
