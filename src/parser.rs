@@ -25,8 +25,20 @@ pub struct XrefRecord {
     obj_type: ObjType,
 }
 
+pub fn read_xref_table<R: Read + Seek>(
+    reader: &mut BufReader<R>,
+) -> Result<Vec<XrefRecord>, Error> {
+    const LIMIT: usize = 16;
+
+    check_eof_with_limit(reader, LIMIT)?;
+    let xref_byte = parse_xref_table_pos(reader)?;
+
+    reader.seek(SeekFrom::Start(xref_byte))?;
+    parse_xref_table(reader)
+}
+
 /// check `%%EOF` comment in PDF file
-pub fn check_eof_with_limit<R: Read + Seek>(
+fn check_eof_with_limit<R: Read + Seek>(
     reader: &mut BufReader<R>,
     limit: usize,
 ) -> Result<(), Error> {
@@ -49,7 +61,7 @@ pub fn check_eof_with_limit<R: Read + Seek>(
 }
 
 /// parse xref table position after find `%%EOF` comment
-pub fn parse_xref_table_pos<R: Read + Seek>(reader: &mut BufReader<R>) -> Result<u64, Error> {
+fn parse_xref_table_pos<R: Read + Seek>(reader: &mut BufReader<R>) -> Result<u64, Error> {
     let xref_byte = utils::read_previous_line(reader)?;
     match xref_byte.parse::<u64>() {
         Err(_) => Err(Error::new(
@@ -61,7 +73,7 @@ pub fn parse_xref_table_pos<R: Read + Seek>(reader: &mut BufReader<R>) -> Result
 }
 
 /// parse xref table content as a `Vec<XrefRecord>`
-pub fn parse_xref_table(reader: &mut BufReader<std::fs::File>) -> Result<Vec<XrefRecord>, Error> {
+fn parse_xref_table<R: Read + Seek>(reader: &mut BufReader<R>) -> Result<Vec<XrefRecord>, Error> {
     let mut buf = [0; 4];
 
     // parse `xref` token
