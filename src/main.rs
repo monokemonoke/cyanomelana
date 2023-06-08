@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File},
-    io::BufReader,
+    io::{BufRead, BufReader, Seek, SeekFrom},
 };
 
 mod parser;
@@ -19,10 +19,17 @@ fn read_pdf(name: &String) {
         Ok(t) => t,
     };
 
-    if table.len() == 0 {
+    if table.len() <= 1 {
         println!("No xref table was found");
-    } else {
-        println!("Found a xref table of {} records", table.len());
+        return;
+    }
+
+    for i in 1..table.len() {
+        reader.seek(SeekFrom::Start(*(&table[i].byte))).unwrap();
+        let mut buf = String::new();
+        if reader.read_line(&mut buf).is_ok() {
+            print!("{}", buf);
+        }
     }
 }
 

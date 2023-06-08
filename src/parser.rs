@@ -20,9 +20,9 @@ impl ObjType {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct XrefRecord {
-    byte: u64,
-    generation: u64,
-    obj_type: ObjType,
+    pub byte: u64,
+    pub generation: u64,
+    pub obj_type: ObjType,
 }
 
 pub fn read_xref_table<R: Read + Seek>(
